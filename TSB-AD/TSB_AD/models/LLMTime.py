@@ -5,8 +5,8 @@ on this anomaly detection benchmark.
 Made by Giovanni Pio Delvecchio
 """
 import sys
-#sys.path.append("/workdir/llmtime-mod")
-sys.path.append("/content/LLMsForAnomalyDetection/llmtime-mod")
+sys.path.append("/workdir/llmtime-mod")
+#sys.path.append("/content/LLMsForAnomalyDetection/llmtime-mod")
 import numpy as np
 import pandas as pd
 import tempfile
@@ -15,7 +15,7 @@ from .base import BaseDetector
 from data.serialize import SerializerSettings
 from models.llmtime import get_llmtime_predictions_data
 
-import pdb
+#import pdb
 
 
 qwen3_hypers = dict(

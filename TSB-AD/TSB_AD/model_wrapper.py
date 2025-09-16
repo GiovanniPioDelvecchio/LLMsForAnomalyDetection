@@ -2,7 +2,7 @@ import numpy as np
 import math
 from .utils.slidingWindows import find_length_rank
 
-Unsupervise_AD_Pool = ['FFT', 'SR', 'NORMA', 'Series2Graph', 'Sub_IForest', 'IForest', 'LOF', 'Sub_LOF', 'POLY', 'MatrixProfile', 'Sub_PCA', 'PCA', 'HBOS', 
+Unsupervise_AD_Pool = ["LLMTime", 'FFT', 'SR', 'NORMA', 'Series2Graph', 'Sub_IForest', 'IForest', 'LOF', 'Sub_LOF', 'POLY', 'MatrixProfile', 'Sub_PCA', 'PCA', 'HBOS', 
                         'Sub_HBOS', 'KNN', 'Sub_KNN','KMeansAD', 'KMeansAD_U', 'KShapeAD', 'COPOD', 'CBLOF', 'COF', 'EIF', 'RobustPCA', 'Lag_Llama', 'TimesFM', 'Chronos', 'MOMENT_ZS']
 Semisupervise_AD_Pool = ['Left_STAMPi', 'SAND', 'MCD', 'Sub_MCD', 'OCSVM', 'Sub_OCSVM', 'AutoEncoder', 'CNN', 'LSTMAD', 'TranAD', 'USAD', 'OmniAnomaly', 
                         'AnomalyTransformer', 'TimesNet', 'FITS', 'Donut', 'OFA', 'MOMENT_FT', 'M2N2']
@@ -361,8 +361,14 @@ def run_Chronos(data, win_size=50, batch_size=64):
 
 # ------------------ Here we add LLMTime(Qwen3) ------------------ 
 
-def run_LLMTime_Qwen(data, win_size, batch_size):
-    pass
+def run_LLMTime(data, win_size=100, batch_size=64):
+    from .models.LLMTime import LLMTime
+    prediction_length = 1
+    #print(f"Prediction length: {prediction_length}")
+    clf = LLMTime(win_size=win_size, prediction_length=prediction_length, input_c=data.shape[1], model_size='base', batch_size=batch_size)
+    clf.fit(data)
+    score = clf.decision_scores_
+    return score.ravel()
 
 
 
