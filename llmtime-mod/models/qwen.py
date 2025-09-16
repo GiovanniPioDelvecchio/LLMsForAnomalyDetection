@@ -17,7 +17,7 @@ DEFAULT_UNK_TOKEN = "<unk>"
 loaded = {}
 
 def get_tokenizer():
-    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3-8B")
+    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3-0.6B")
     special_tokens_dict = dict()
     if tokenizer.eos_token is None:
         special_tokens_dict["eos_token"] = DEFAULT_EOS_TOKEN
@@ -35,7 +35,7 @@ def get_model_and_tokenizer(model_name, cache_model=False):
     tokenizer = get_tokenizer()
    
     #model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen3-8B", device_map="cpu")
-    model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen3-8B", device_map="cuda")
+    model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen3-0.6B", device_map="cuda")
     model.eval()
     if cache_model:
         loaded[model_name] = model, tokenizer
