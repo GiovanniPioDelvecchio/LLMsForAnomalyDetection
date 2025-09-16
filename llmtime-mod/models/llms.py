@@ -43,7 +43,7 @@ completion_fns = {
     'llama-7b-chat': partial(llama_completion_fn, model='7b-chat'),
     'llama-13b-chat': partial(llama_completion_fn, model='13b-chat'),
     'llama-70b-chat': partial(llama_completion_fn, model='70b-chat'),
-    'qwen3-8B': partial(qwen_completion_fn, model="Qwen/Qwen3-8B")
+    'qwen3-8B': partial(qwen_completion_fn, model="Qwen/Qwen3-0.6B")
 }
 
 # Optional: NLL/D functions for each model
