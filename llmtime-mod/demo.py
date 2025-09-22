@@ -141,7 +141,7 @@ model_hypers = {
      #'LLMTime GPT-3': {'model': 'text-davinci-003', **gpt3_hypers},
      #'PromptCast GPT-3': {'model': 'text-davinci-003', **promptcast_hypers},
      'LLAMA2': {'model': 'llama-7b', **llama_hypers},
-     'qwen3-8B': {'model': 'qwen3-8B', **qwen3_hypers},
+     'qwen3': {'model': 'qwen3', **qwen3_hypers},
      #'mistral': {'model': 'mistral', **llma2_hypers},
      #'mistral-api-tiny': {'model': 'mistral-api-tiny', **mistral_api_hypers},
      #'mistral-api-small': {'model': 'mistral-api-tiny', **mistral_api_hypers},
@@ -162,7 +162,7 @@ model_predict_fns = {
 
 model_predict_fns = {
     #'LLAMA2': get_llmtime_predictions_data,
-    'qwen3-8B': get_llmtime_predictions_data,
+    'qwen3': get_llmtime_predictions_data,
     #'Mistral-7B': get_llmtime_predictions_data,
     #'Mixtral-8x7B': get_llmtime_predictions_data,
     #'ARIMA': get_arima_predictions_data,

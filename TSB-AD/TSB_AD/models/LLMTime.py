@@ -59,7 +59,7 @@ class LLMTime(BaseDetector):
             for window_idx, current_series_window in enumerate(data_win):
                 current_target = data_target[window_idx]
                 prediction_dict = get_llmtime_predictions_data(current_series_window, current_target, 
-                                                               model='qwen3-8B', settings=qwen3_hypers["settings"], 
+                                                               model='qwen3', settings=qwen3_hypers["settings"], 
                                                                num_samples = 10, temp=qwen3_hypers["temp"], 
                                                                alpha=qwen3_hypers["alpha"], beta=qwen3_hypers["beta"])
                 predictions = prediction_dict['samples'][100].tolist() # for some reason the name of the series within the returned dataframe is 100

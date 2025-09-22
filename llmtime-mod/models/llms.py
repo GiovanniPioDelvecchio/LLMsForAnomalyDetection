@@ -43,7 +43,7 @@ completion_fns = {
     'llama-7b-chat': partial(llama_completion_fn, model='7b-chat'),
     'llama-13b-chat': partial(llama_completion_fn, model='13b-chat'),
     'llama-70b-chat': partial(llama_completion_fn, model='70b-chat'),
-    'qwen3-8B': partial(qwen_completion_fn, model="Qwen/Qwen3-0.6B")
+    'qwen3': partial(qwen_completion_fn, model="Qwen/Qwen3-0.6B")
 }
 
 # Optional: NLL/D functions for each model
@@ -76,7 +76,7 @@ nll_fns = {
     'llama-7b-chat': partial(llama_nll_fn, model='7b-chat'),
     'llama-13b-chat': partial(llama_nll_fn, model='13b-chat'),
     'llama-70b-chat': partial(llama_nll_fn, model='70b-chat'),
-    'qwen3-8B': partial(qwen_nll_fn, model="Qwen/Qwen3-8B")
+    'qwen3': partial(qwen_nll_fn, model="Qwen/Qwen3-8B")
 }
 
 # Optional: Tokenization function for each model, only needed if you want automatic input truncation.
@@ -99,7 +99,7 @@ tokenization_fns = {
     'llama-7b-chat': partial(llama_tokenize_fn, model='7b-chat'),
     'llama-13b-chat': partial(llama_tokenize_fn, model='13b-chat'),
     'llama-70b-chat': partial(llama_tokenize_fn, model='70b-chat'),
-    'qwen3-8B': partial(qwen_tokenize_fn, model="Qwen/Qwen3-8B")
+    'qwen3': partial(qwen_tokenize_fn, model="Qwen/Qwen3-8B")
 }
 
 # Optional: Context lengths for each model, only needed if you want automatic input truncation.
@@ -116,5 +116,5 @@ context_lengths = {
     'llama-7b-chat': 4096,
     'llama-13b-chat': 4096,
     'llama-70b-chat': 4096,
-    'qwen3-8B': 4096
+    'qwen3': 4096
 }
