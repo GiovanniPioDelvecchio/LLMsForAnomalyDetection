@@ -8,7 +8,7 @@ from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 import pandas as pd
 import tempfile
-import pdb
+#import pdb
 
 from .base import BaseDetector
 
@@ -74,7 +74,7 @@ class Chronos(BaseDetector):
         padded_decision_scores[self.win_size+self.prediction_length-1 : ]=scores_merge
 
         self.decision_scores_ = padded_decision_scores
-        pdb.set_trace()
+        #pdb.set_trace()
 
 
     def decision_function(self, X):
