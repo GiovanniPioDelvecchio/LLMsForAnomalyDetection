@@ -6,6 +6,7 @@ from chronosx.chronosx import ChronosXPipeline
 from chronosx.utils.chronos_dataset import ChronosDataset
 from inv_utils import load_inverse_opt_results
 import torch
+from pathlib import Path
 
 
 from gluonts.model.evaluation import evaluate_forecasts
@@ -32,31 +33,29 @@ def plot_preds_vs_groundtruth(all_true, all_medians, all_lows, all_highs, save_d
     plt.close()
 
 
-def plot_future_covariates(no_opt_future_covariates, future_covariates, save_dir):
-
+def plot_future_covariates_series(no_opt_future_covariates, opt_future_covariates, save_dir):
+    """
+    Plot delle covariate no-opt vs opt come segnali lungo l'asse temporale.
+    - no_opt_future_covariates: tensor shape (1, T, F)
+    - opt_future_covariates: tensor shape (1, T, F)
+    """
     # converto in numpy
-    no_opt_np = no_opt_future_covariates[0].cpu().numpy()  # shape (2,2)
-    opt_np = future_covariates[0].cpu().numpy()           # shape (2,2)
+    no_opt_np = np.array(no_opt_future_covariates) 
+    opt_np = np.array(opt_future_covariates)
 
-    labels = ["t0_f1", "t0_f2", "t1_f1", "t1_f2"]
+    #T, F = no_opt_np.shape
+    x_axis = np.arange(no_opt_np.shape[0])
 
-    # flatten per plot a barre
-    no_opt_flat = no_opt_np.flatten()
-    opt_flat = opt_np.flatten()
+    plt.figure(figsize=(12, 6))
+    #for f in range(F):
+    plt.plot(x_axis, no_opt_np, linestyle="--", label=f"No-Opt Covariate Feature")
+    plt.plot(x_axis, opt_np, linestyle="-", label=f"Opt Covariate Feature")
 
-    # crea due grafici uno sopra l'altro
-    fig, axs = plt.subplots(2, 1, figsize=(8, 6), sharex=True)
-
-    axs[0].bar(labels, no_opt_flat, color='gray')
-    axs[0].set_title("No-Optimization Future Covariates")
-    axs[0].set_ylim(min(opt_flat.min(), no_opt_flat.min()) - 0.5,
-                    max(opt_flat.max(), no_opt_flat.max()) + 0.5)
-
-    axs[1].bar(labels, opt_flat, color='blue')
-    axs[1].set_title("Optimized Future Covariates")
-    axs[1].set_ylim(min(opt_flat.min(), no_opt_flat.min()) - 0.5,
-                    max(opt_flat.max(), no_opt_flat.max()) + 0.5)
-
+    plt.xlabel("Time Steps")
+    plt.ylabel("Covariate Value")
+    plt.title("Future Covariates Optimization Effect")
+    plt.legend()
+    plt.grid(True)
     plt.tight_layout()
     plt.savefig(save_dir)
     plt.close()
@@ -71,7 +70,7 @@ if __name__ == "__main__":
 
     print("@@ LOADING MODEL @@")
     lr = 0.0001
-    run_id = 0
+    run_id = 1
     MODEL_CHECKPOINT = f"../../output/finetune/anomaly/lr={lr}/run_id={run_id}/final-checkpoint"
     INJECTION_METHOD = "IIB+OIB"
     chronos_config = AutoConfig.from_pretrained(MODEL_CHECKPOINT)
@@ -99,103 +98,118 @@ if __name__ == "__main__":
         mode="validation",
     )
     
+    inverse_opt_mode = True
+
+    plot_dir = "./plots/"
+    Path(plot_dir).mkdir(parents=True, exist_ok=True)
+
+    if inverse_opt_mode:
+        file_path = "inverse_opt_results_stream.pkl"
+        all_batches = load_inverse_opt_results(file_path)
+
+        opt_past_covariates = []
+        opt_future_covariates = []
+        for elem in all_batches:
+            opt_past_covariates.append(elem["past_covariates_final"])
+            opt_future_covariates.append(elem["future_covariates_final"])
+
+        all_true = []
+        all_medians = []
+        all_lows = []
+        all_highs = []
+
+        all_no_opt_future_covariates = []
+        all_opt_future_covariates = []
+        for i, batch in enumerate(quantized_test_dataset):
+            if i < 100:
+                context = torch.tensor(batch["input_ids"]).unsqueeze(0).to(device).long()
+                labels_tokens = torch.tensor(batch["labels"]).unsqueeze(0).to(device).long()
+
+                no_opt_past_covariates = torch.tensor(batch["past_covariates"], device=device).unsqueeze(0).float()
+                no_opt_future_covariates = torch.tensor(batch["future_covariates"], device=device).unsqueeze(0).float()
+                past_covariates = torch.tensor(opt_past_covariates[i], device=device)#.unsqueeze(0).float()
+                future_covariates = torch.tensor(opt_future_covariates[i], device=device)#.unsqueeze(0).float()
+
+                all_no_opt_future_covariates.append(no_opt_future_covariates[0, 0, 0].item())
+                all_opt_future_covariates.append(future_covariates[0, 0, 0].item())
+
+                #pdb.set_trace()
+
+                forecasts = chronosx_model.generate(
+                    input_ids=context,
+                    max_new_tokens=prediction_length,
+                    do_sample=True,             
+                    top_k = 50,
+                    num_return_sequences=20,
+                    past_covariates=past_covariates,
+                    future_covariates=future_covariates
+                )
+
+                preds = forecasts[:, 1:].squeeze().cpu().numpy()
+
+                median = np.median(preds)
+                low = np.percentile(preds, 10, axis=0)   # 10th percentile → basso
+                high = np.percentile(preds, 90, axis=0)  # 90th percentile → alto
+
+                all_medians.append(median)
+                all_lows.append(low)
+                all_highs.append(high)
+
+                all_true.append(batch["labels"][:1].item())
+
+                #pdb.set_trace()
+        
+        
+        save_dir = "./plots/rolling_inv_opt_forecast.png"
+        plot_preds_vs_groundtruth(all_true, all_medians, all_lows, all_highs, save_dir)
+        save_dir_cov = "./plots/covariates_inv_opt.png"
+        plot_future_covariates_series(all_no_opt_future_covariates, all_opt_future_covariates, save_dir_cov)
+        print("Done :)")
     
-    file_path = "inverse_opt_results_stream.pkl"
-    all_batches = load_inverse_opt_results(file_path)
 
-    opt_past_covariates = []
-    opt_future_covariates = []
-    for elem in all_batches:
-        opt_past_covariates.append(elem["past_covariates_final"])
-        opt_future_covariates.append(elem["future_covariates_final"])
+    else:
+        all_true = []
+        all_medians = []
+        all_lows = []
+        all_highs = []
+        for i, batch in enumerate(quantized_test_dataset):
+            if i < 100:
+                context = torch.tensor(batch["input_ids"]).unsqueeze(0).to(device).long()
+                labels_tokens = torch.tensor(batch["labels"]).unsqueeze(0).to(device).long()
 
-    all_true = []
-    all_medians = []
-    all_lows = []
-    all_highs = []
-    for i, batch in enumerate(quantized_test_dataset):
-        if i < 100:
-            context = torch.tensor(batch["input_ids"]).unsqueeze(0).to(device).long()
-            labels_tokens = torch.tensor(batch["labels"]).unsqueeze(0).to(device).long()
+                past_covariates = torch.tensor(batch["past_covariates"], device=device).unsqueeze(0).float()
+                future_covariates = torch.tensor(batch["future_covariates"], device=device).unsqueeze(0).float()
+                #past_covariates = torch.tensor(opt_past_covariates[i], device=device)#.unsqueeze(0).float()
+                #future_covariates = torch.tensor(opt_future_covariates[i], device=device)#.unsqueeze(0).float()
 
-            no_opt_past_covariates = torch.tensor(batch["past_covariates"], device=device).unsqueeze(0).float()
-            no_opt_future_covariates = torch.tensor(batch["future_covariates"], device=device).unsqueeze(0).float()
-            past_covariates = torch.tensor(opt_past_covariates[i], device=device)#.unsqueeze(0).float()
-            future_covariates = torch.tensor(opt_future_covariates[i], device=device)#.unsqueeze(0).float()
+                forecasts = chronosx_model.generate(
+                    input_ids=context,
+                    max_new_tokens=prediction_length,
+                    do_sample=True,             
+                    top_k = 50,
+                    num_return_sequences=20,
+                    past_covariates=past_covariates,
+                    future_covariates=future_covariates
+                )
 
-            forecasts = chronosx_model.generate(
-                input_ids=context,
-                max_new_tokens=prediction_length,
-                do_sample=True,             
-                top_k = 50,
-                num_return_sequences=20,
-                past_covariates=past_covariates,
-                future_covariates=future_covariates
-            )
+                preds = forecasts[:, 1:].squeeze().cpu().numpy()
 
-            preds = forecasts[:, 1:].squeeze().cpu().numpy()
+                preds = forecasts[:, 1:].squeeze().cpu().numpy()
 
-            median = np.median(preds)
-            low = np.percentile(preds, 10, axis=0)   # 10th percentile → basso
-            high = np.percentile(preds, 90, axis=0)  # 90th percentile → alto
+                median = np.median(preds)
+                low = np.percentile(preds, 10, axis=0)   # 10th percentile → basso
+                high = np.percentile(preds, 90, axis=0)  # 90th percentile → alto
 
-            all_medians.append(median)
-            all_lows.append(low)
-            all_highs.append(high)
+                all_medians.append(median)
+                all_lows.append(low)
+                all_highs.append(high)
 
-            all_true.append(batch["labels"][:1].item())
-
-            #pdb.set_trace()
+                all_true.append(batch["labels"][:1].item())
+        
+        save_dir = "./plots/rolling_training_preds.png"
+        plot_preds_vs_groundtruth(all_true, all_medians, all_lows, all_highs, save_dir)
     
-    
-    save_dir = "./plots/rolling_inv_opt_forecast.png"
-    plot_preds_vs_groundtruth(all_true, all_medians, all_lows, all_highs, save_dir)
-    print("Done :)")
-    
-
     """
-    all_true = []
-    all_medians = []
-    all_lows = []
-    all_highs = []
-    for i, batch in enumerate(quantized_test_dataset):
-        if i < 100:
-            context = torch.tensor(batch["input_ids"]).unsqueeze(0).to(device).long()
-            labels_tokens = torch.tensor(batch["labels"]).unsqueeze(0).to(device).long()
-
-            past_covariates = torch.tensor(batch["past_covariates"], device=device).unsqueeze(0).float()
-            future_covariates = torch.tensor(batch["future_covariates"], device=device).unsqueeze(0).float()
-            #past_covariates = torch.tensor(opt_past_covariates[i], device=device)#.unsqueeze(0).float()
-            #future_covariates = torch.tensor(opt_future_covariates[i], device=device)#.unsqueeze(0).float()
-
-            forecasts = chronosx_model.generate(
-                input_ids=context,
-                max_new_tokens=prediction_length,
-                do_sample=True,             
-                top_k = 50,
-                num_return_sequences=20,
-                past_covariates=past_covariates,
-                future_covariates=future_covariates
-            )
-
-            preds = forecasts[:, 1:].squeeze().cpu().numpy()
-
-            preds = forecasts[:, 1:].squeeze().cpu().numpy()
-
-            median = np.median(preds)
-            low = np.percentile(preds, 10, axis=0)   # 10th percentile → basso
-            high = np.percentile(preds, 90, axis=0)  # 90th percentile → alto
-
-            all_medians.append(median)
-            all_lows.append(low)
-            all_highs.append(high)
-
-            all_true.append(batch["labels"][:1].item())
-    
-    save_dir = "./plots/rolling_training_preds.png"
-    plot_preds_vs_groundtruth(all_true, all_medians, all_lows, all_highs, save_dir)
-    """
-
     #pdb.set_trace()
     splitter = OffsetSplitter(offset=-prediction_length)
     test_wrapper = TestData(test_dataset, splitter=splitter, prediction_length=prediction_length)
@@ -225,3 +239,4 @@ if __name__ == "__main__":
             **metrics[0],
         }
     )
+    """

@@ -19,15 +19,28 @@ from pprint import pprint
 
 import pandas as pd
 from datasets import Dataset
+from typing import List
 from inv_utils import load_anomaly_dataset
 
 from gluonts.dataset.split import TestData, OffsetSplitter
 
-import pdb
-
-
+import argparse
 
 if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(
+        description="Chronos-X training script with custom dataset"
+    )
+
+    parser.add_argument("--data-dir", type=str, 
+                        default='/workdir/LLMsForAnomalyDetection/TSB-AD/Datasets/TSB-AD-U/' \
+                        '001_NAB_id_1_Facility_tr_1007_1st_2014.csv', 
+                        help="Path to the custom dataset to use for training")
+    parser.add_argument("--num-runs", type=int, default=1, help="Number of training runs to perform")
+    parser.add_argument("--lr-list", type=float, nargs= "+", default=[0.0001], help="List of learning rates to use for training")
+    parser.add_argument("--max_steps", type=int, default = 5000, help="Maximum number of training steps")
+    args = parser.parse_args()
+
     covariate_injection = "IIB+OIB"
     chronos_model_id = "amazon/chronos-t5-small"
     config_path = "./configs/datasets.yaml"
@@ -37,32 +50,19 @@ if __name__ == "__main__":
 
     min_past = 1
     shuffle_buffer_length = 100
-    num_runs = 3
-    max_steps = 5000
+    num_runs = args.num_runs
+    max_steps = args.max_steps
     skip_pretrained_validation = False
     # learning_rate_list = [0.01, 0.001, 0.0001]
     # learning_rate_list = [0.001, 0.0001]
-    learning_rate_list = [0.0001]
-    """
-    with open(config_path) as fp:
-        backtest_configs = yaml.safe_load(fp)
-
-    dataset_config = backtest_configs[3]
-    dataset_name = dataset_config["name"]
-    prediction_length = dataset_config["prediction_length"]
-    num_covariates = 2 * len(dataset_config["covariates_fields"])
-
-    # the following dataloading is the one that has to be changed to load a Pandas Dataset
-    train_dataset, test_dataset = load_and_split_dataset(backtest_config=dataset_config)
-    pdb.set_trace()
-    """
-
+    # learning_rate_list = [0.0001]
+    learning_rate_list = args.lr_list
 
     dataset_name = "anomaly"
     prediction_length = 1
     num_covariates = 2
 
-    train_dataset, val_dataset, test_dataset = load_anomaly_dataset()
+    train_dataset, val_dataset, test_dataset = load_anomaly_dataset(args.data_dir)
 
 
     # Load Chronos
